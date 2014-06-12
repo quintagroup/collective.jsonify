@@ -2,6 +2,7 @@ import base64
 import sys
 import pprint
 import traceback
+from Products.Five.browser import BrowserView
 
 try:
     import simplejson as json
@@ -20,7 +21,6 @@ def _clean_dict(dct, error):
             return key, new_dict
     raise ValueError("Could not clean up object")
 
-
 def get_item(self):
     """
     """
@@ -30,7 +30,6 @@ def get_item(self):
     except Exception, e:
         tb = pprint.pformat(traceback.format_tb(sys.exc_info()[2]))
         return 'ERROR: exception wrapping object: %s\n%s' % (str(e), tb)
-
     passed = False
     while not passed:
         try:
@@ -45,7 +44,7 @@ def get_item(self):
             else:
                 return ('ERROR: Unknown error serializing object: %s' %
                     str(error))
-
+    self.REQUEST.RESPONSE.setHeader("Content-type", "application/json")
     return JSON
 
 
@@ -62,6 +61,7 @@ def get_children(self):
         # Thus we need to convert it to a list
         if not isinstance(children, list):
             children = [item for item in children]
+    self.REQUEST.RESPONSE.setHeader("Content-type", "application/json")
     return json.dumps(children)
 
 
@@ -77,4 +77,27 @@ def get_catalog_results(self):
                      {"__builtins__": None}, {})
     item_paths = [item.getPath() for item
                   in self.unrestrictedSearchResults(**query)]
+    self.REQUEST.RESPONSE.setHeader("Content-type", "application/json")
     return json.dumps(item_paths)
+
+
+
+class Jsonify(BrowserView):
+
+
+    def get_item(self):
+        """
+        """      
+        return get_item(self.context)
+
+
+    def get_children(self):
+        """
+        """
+        return get_children(self.context)
+
+
+    def get_catalog_results(self):
+        """
+        """
+        return get_catalog_results(self.context)

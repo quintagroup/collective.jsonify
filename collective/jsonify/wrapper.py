@@ -1,5 +1,16 @@
 import os
 
+from zope.component import getUtilitiesFor, queryMultiAdapter, getUtility, \
+    getMultiAdapter, adapts
+from plone.portlets.interfaces import ILocalPortletAssignable, IPortletManager,\
+    IPortletAssignmentMapping, IPortletAssignment, ILocalPortletAssignmentManager
+from plone.portlets.constants import USER_CATEGORY, GROUP_CATEGORY, \
+    CONTENT_TYPE_CATEGORY, CONTEXT_CATEGORY
+from plone.app.portlets.interfaces import IPortletTypeInterface
+from plone.app.portlets.exportimport.interfaces import IPortletAssignmentExportImportHandler
+from plone.app.portlets.exportimport.portlets import PropertyPortletAssignmentExportImportHandler
+
+
 
 class Wrapper(dict):
     """ Gets the data in a format that can be used by the
@@ -337,7 +348,6 @@ class Wrapper(dict):
     def get_archetypes_fields(self):
         """ If Archetypes is used then dump schema
         """
-
         try:
             from Products.Archetypes.interfaces import IBaseObject
             if not IBaseObject.providedBy(self.context):
@@ -347,6 +357,10 @@ class Wrapper(dict):
 
         import base64
         fields = self.context.schema.fields()
+        #import pdb;pdb.set_trace()
+        from plone.app.blob.interfaces import IATBlob
+        if IATBlob.providedBy(self.context):
+            fields.append(self.context.getPrimaryField())
         for field in fields:
             fieldname = unicode(field.__name__)
             type_ = field.__class__.__name__
@@ -397,8 +411,8 @@ class Wrapper(dict):
                 if value:
                     self[unicode(fieldname)] = value
 
-            elif type_ in ['ImageField', 'FileField', 'AttachmentField']:
-                fieldname = unicode('_datafield_' + fieldname)
+            elif type_ in ['ImageField', 'FileField', 'AttachmentField','ExtensionBlobField']:
+                #fieldname = unicode('_datafield_' + fieldname)
 
                 value = self._get_at_field_value(field)
                 value2 = value
@@ -497,3 +511,36 @@ class Wrapper(dict):
         self['_translationOf'] = '/'.join(self.context.getCanonical(
                                  ).getPhysicalPath())[len(self.portal_path):]
         self['_canonicalTranslation'] = self.context.isCanonical()
+
+    def get_portlets(self):
+        """ List portlets assignment
+        """
+        portlet_managers = list(getUtilitiesFor(IPortletManager))
+        obj = self.context
+        self['portlets'] = {}
+        import pdb; pdb.set_trace()
+        if ILocalPortletAssignable.providedBy(obj):
+            data = None
+            assignments = []
+            for manager_name, manager in portlet_managers:
+                mapping = queryMultiAdapter((obj, manager), IPortletAssignmentMapping)
+                if mapping is None:
+                    continue
+                mapping = mapping.__of__(obj)
+
+                for name, assignment in mapping.items():
+                    type_ = None
+                    for schema in providedBy(assignment).flattened():
+                        type_ = self.portlet_schemata.get(schema, None)
+                        if type_ is not None:
+                            break
+                    self['portlets']['assignments'] = []
+                    if type_ is not None:
+                        child = {}
+                        child['manager'] = manager_name
+                        child['category'] = CONTEXT_CATEGORY
+                        child['key'] = '/'.join(obj.getPhysicalPath())
+                        child['type'] = type_
+                        child['name'] = name
+                        self['portlets']['assignments'].append(child)
+        

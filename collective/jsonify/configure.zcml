@@ -9,5 +9,26 @@
       for="*"
       permission="zope2.View"
       />
+  <browser:page
+      name="get_item"
+      class=".methods.Jsonify"
+      for="*"
+      permission="zope2.View"
+      attribute="get_item"
+      />
+  <browser:page
+      name="get_children"
+      class=".methods.Jsonify"
+      for="*"
+      permission="zope2.View"
+      attribute="get_children"
+      />
+  <browser:page
+      name="get_catalog_results"
+      class=".methods.Jsonify"
+      for="*"
+      permission="zope2.View"
+      attribute="get_catalog_results"
+      />
 
 </configure>
