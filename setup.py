@@ -24,4 +24,8 @@ setup(
         'setuptools',
         'simplejson',
         ],
+    entry_points="""
+    [z3c.autoinclude.plugin]
+    target = plone
+    """
     )

@@ -2,6 +2,10 @@ import os
 
 from zope.component import getUtilitiesFor, queryMultiAdapter, getUtility, \
     getMultiAdapter, adapts
+from zope.interface import providedBy
+from collective.panels.traversal import PanelManager
+from plone.app.portlets.interfaces import IPortletTypeInterface
+from plone.portlets.interfaces import IPortletRenderer
 from plone.portlets.interfaces import ILocalPortletAssignable, IPortletManager,\
     IPortletAssignmentMapping, IPortletAssignment, ILocalPortletAssignmentManager
 from plone.portlets.constants import USER_CATEGORY, GROUP_CATEGORY, \
@@ -518,23 +522,25 @@ class Wrapper(dict):
         portlet_managers = list(getUtilitiesFor(IPortletManager))
         obj = self.context
         self['portlets'] = {}
-        import pdb; pdb.set_trace()
         if ILocalPortletAssignable.providedBy(obj):
+            self.portlet_schemata = dict([(iface, name,) for name, iface in 
+                getUtilitiesFor(IPortletTypeInterface)])
             data = None
             assignments = []
             for manager_name, manager in portlet_managers:
                 mapping = queryMultiAdapter((obj, manager), IPortletAssignmentMapping)
-                if mapping is None:
+                if mapping is None or manager_name == 'panels':
                     continue
                 mapping = mapping.__of__(obj)
-
                 for name, assignment in mapping.items():
                     type_ = None
                     for schema in providedBy(assignment).flattened():
                         type_ = self.portlet_schemata.get(schema, None)
                         if type_ is not None:
                             break
-                    self['portlets']['assignments'] = []
+                    #import pdb;pdb.set_trace()
+                    if not 'assignments' in self['portlets'].keys():
+                        self['portlets']['assignments'] = []
                     if type_ is not None:
                         child = {}
                         child['manager'] = manager_name
@@ -543,4 +549,23 @@ class Wrapper(dict):
                         child['type'] = type_
                         child['name'] = name
                         self['portlets']['assignments'].append(child)
-        
+            names = ['plone.belowcontentbody','plone.abovecontentbody', 'plone.portalfooter','plone.portaltop']
+            for manager_name in names:
+                panels = PanelManager(obj, obj.REQUEST, obj, manager_name)
+                for panel_name, panel in panels._mapping.items():
+                    for name, assignment in panel.items():
+                        for schema in providedBy(assignment).flattened():
+                            type_ = self.portlet_schemata.get(schema, None)
+                            if type_ is not None:
+                                break
+                        if not 'assignments' in self['portlets'].keys():
+                            self['portlets']['assignments'] = []
+                        if type_ is not None:
+                            child = {}
+                            child['manager'] = manager_name
+                            child['panel'] = panel_name
+                            child['category'] = CONTEXT_CATEGORY
+                            child['key'] = '/'.join(obj.getPhysicalPath())
+                            child['type'] = type_
+                            child['name'] = name
+                            self['portlets']['assignments'].append(child)
