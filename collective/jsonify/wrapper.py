@@ -552,9 +552,10 @@ class Wrapper(dict):
             names = ['plone.belowcontentbody','plone.abovecontentbody', 'plone.portalfooter','plone.portaltop']
             for manager_name in names:
                 panels = PanelManager(obj, obj.REQUEST, obj, manager_name)
-                for panel_name, panel in panels._mapping.items():
-                    for name, assignment in panel.items():
-                        for schema in providedBy(assignment).flattened():
+                import pdb; pdb.set_trace()
+                for panel in panels._mapping.items():
+                    for name in panel[1].keys():
+                        for schema in providedBy(panel[1][name]).flattened():
                             type_ = self.portlet_schemata.get(schema, None)
                             if type_ is not None:
                                 break
@@ -563,7 +564,7 @@ class Wrapper(dict):
                         if type_ is not None:
                             child = {}
                             child['manager'] = manager_name
-                            child['panel'] = panel_name
+                            child['panel'] = panel[0]
                             child['category'] = CONTEXT_CATEGORY
                             child['key'] = '/'.join(obj.getPhysicalPath())
                             child['type'] = type_
