@@ -15,7 +15,10 @@ from plone.app.portlets.interfaces import IPortletTypeInterface
 from plone.app.portlets.exportimport.interfaces import IPortletAssignmentExportImportHandler
 from plone.app.portlets.exportimport.portlets import PropertyPortletAssignmentExportImportHandler
 
-from plone.multilingual.interfaces import ITranslationManager
+try:
+    from plone.multilingual.interfaces import ITranslationManager
+except:
+    from plone.app.multilingual.interfaces import ITranslationManager    
 
 
 
