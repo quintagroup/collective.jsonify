@@ -2,6 +2,7 @@ import os
 
 from zope.component import getUtilitiesFor, queryMultiAdapter, getUtility, \
     getMultiAdapter, adapts
+from zope.schema.interfaces import IField
 from zope.interface import providedBy
 from collective.panels.traversal import PanelManager
 from plone.app.portlets.interfaces import IPortletTypeInterface
@@ -521,6 +522,16 @@ class Wrapper(dict):
     def get_portlets(self):
         """ List portlets assignment
         """
+        def export_fields(portlet_interface, portlet, properties):
+            for field_name in portlet_interface:
+                field = portlet_interface[field_name]
+                if not IField.providedBy(field):
+                    continue
+                field = field.bind(portlet)
+                value = field.get(portlet)
+                properties[field_name] = value
+
+
         portlet_managers = list(getUtilitiesFor(IPortletManager))
         obj = self.context
         self['portlets'] = {}
@@ -540,7 +551,6 @@ class Wrapper(dict):
                         type_ = self.portlet_schemata.get(schema, None)
                         if type_ is not None:
                             break
-                    #import pdb;pdb.set_trace()
                     if not 'assignments' in self['portlets'].keys():
                         self['portlets']['assignments'] = []
                     if type_ is not None:
@@ -550,6 +560,10 @@ class Wrapper(dict):
                         child['key'] = '/'.join(obj.getPhysicalPath())
                         child['type'] = type_
                         child['name'] = name
+                        child['properties'] = {}
+                        portlet_interface = getUtility(IPortletTypeInterface, name=type_)
+                        assignment = assignment.__of__(obj)
+                        export_fields(portlet_interface, assignment, child['properties'])
                         self['portlets']['assignments'].append(child)
             names = ['plone.belowcontentbody','plone.abovecontentbody', 'plone.portalfooter','plone.portaltop']
             for manager_name in names:
@@ -571,6 +585,10 @@ class Wrapper(dict):
                             child['key'] = '/'.join(obj.getPhysicalPath())
                             child['type'] = type_
                             child['name'] = name
+                            child['properties'] = {}
+                            assignment = panel[1][name].__of__(obj)
+                            portlet_interface = getUtility(IPortletTypeInterface, name=type_)
+                            export_fields(portlet_interface, panel[1][name], child['properties'])
                             self['portlets']['assignments'].append(child)
 
 
