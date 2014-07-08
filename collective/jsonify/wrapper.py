@@ -14,6 +14,8 @@ from plone.app.portlets.interfaces import IPortletTypeInterface
 from plone.app.portlets.exportimport.interfaces import IPortletAssignmentExportImportHandler
 from plone.app.portlets.exportimport.portlets import PropertyPortletAssignmentExportImportHandler
 
+from plone.multilingual.interfaces import ITranslationManager
+
 
 
 class Wrapper(dict):
@@ -552,7 +554,7 @@ class Wrapper(dict):
             names = ['plone.belowcontentbody','plone.abovecontentbody', 'plone.portalfooter','plone.portaltop']
             for manager_name in names:
                 panels = PanelManager(obj, obj.REQUEST, obj, manager_name)
-                import pdb; pdb.set_trace()
+                #import pdb; pdb.set_trace()
                 for panel in panels._mapping.items():
                     for name in panel[1].keys():
                         for schema in providedBy(panel[1][name]).flattened():
@@ -570,3 +572,16 @@ class Wrapper(dict):
                             child['type'] = type_
                             child['name'] = name
                             self['portlets']['assignments'].append(child)
+
+
+    def get_translations(self):
+        """ List translations information
+        """
+        #import pdb;pdb.set_trace()
+        tm = ITranslationManager(self.context)
+        self['translation_group'] = tm.get_tg(self.context)
+        self['translations'] = {}
+        translations = tm.get_translations()
+        for key in translations:
+            b = translations[key]
+            self['translations'][key] = ['/'.join(b.getPhysicalPath()), b.UID()] 
