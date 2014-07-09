@@ -15,7 +15,7 @@ from plone.app.portlets.interfaces import IPortletTypeInterface
 from plone.app.portlets.exportimport.interfaces import IPortletAssignmentExportImportHandler
 from plone.app.portlets.exportimport.portlets import PropertyPortletAssignmentExportImportHandler
 
-
+from plone.multilingual.interfaces import ITranslationManager
 
 class Wrapper(dict):
     """ Gets the data in a format that can be used by the
@@ -525,9 +525,9 @@ class Wrapper(dict):
                 field = portlet_interface[field_name]
                 if not IField.providedBy(field):
                     continue
-                field = field.bind(portlet)
-                value = field.get(portlet)
-                properties[field_name] = value
+                #field = field.bind(portlet)
+                #value = field.get(portlet)
+                properties[field_name] = getattr(portlet,field_name)
 
 
         portlet_managers = list(getUtilitiesFor(IPortletManager))
@@ -579,6 +579,7 @@ class Wrapper(dict):
                             child = {}
                             child['manager'] = manager_name
                             child['panel'] = panel[0]
+                            child['layout'] = panel[1].layout
                             child['category'] = CONTEXT_CATEGORY
                             child['key'] = '/'.join(obj.getPhysicalPath())
                             child['type'] = type_
@@ -588,3 +589,16 @@ class Wrapper(dict):
                             portlet_interface = getUtility(IPortletTypeInterface, name=type_)
                             export_fields(portlet_interface, panel[1][name], child['properties'])
                             self['portlets']['assignments'].append(child)
+
+
+    def get_translations(self):
+        """ List translations information
+        """
+        #import pdb;pdb.set_trace()
+        tm = ITranslationManager(self.context)
+        self['translation_group'] = tm.get_tg(self.context)
+        self['translations'] = {}
+        translations = tm.get_translations()
+        for key in translations:
+            b = translations[key]
+            self['translations'][key] = ['/'.join(b.getPhysicalPath()), b.UID()] 
