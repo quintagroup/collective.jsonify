@@ -30,5 +30,11 @@
       permission="zope2.View"
       attribute="get_catalog_results"
       />
-
+  <browser:page
+      name="update_uids"
+      class=".methods.Jsonify"
+      for="*"
+      permission="zope2.View"
+      attribute="update_uids"
+      />
 </configure>
