@@ -17,6 +17,13 @@
       attribute="get_item"
       />
   <browser:page
+      name="get_redirects"
+      class=".methods.Jsonify"
+      for="*"
+      permission="zope2.View"
+      attribute="get_redirects"
+      />
+  <browser:page
       name="get_children"
       class=".methods.Jsonify"
       for="*"

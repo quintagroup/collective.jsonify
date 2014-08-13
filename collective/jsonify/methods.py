@@ -3,6 +3,8 @@ import sys
 import pprint
 import traceback
 from Products.Five.browser import BrowserView
+from zope.component import getUtility
+from plone.app.redirector.interfaces import IRedirectionStorage
 
 try:
     import simplejson as json
@@ -87,6 +89,14 @@ def get_catalog_results(self):
     return json.dumps(item_paths)
 
 
+def get_redirects(self):
+    storage = getUtility(IRedirectionStorage)
+    res = {}
+    for key in list(storage):
+        res[key] = storage.get(key)
+    self.REQUEST.RESPONSE.setHeader("Content-type", "application/json")
+    return json.dumps(res)
+
 
 class Jsonify(BrowserView):
 
@@ -107,6 +117,11 @@ class Jsonify(BrowserView):
         """
         """
         return get_catalog_results(self.context)
+
+    def get_redirects(self):
+        """
+        """
+        return get_redirects(self.context)
 
     def update_uids(self):
         """Check for UIDs on original site and set
