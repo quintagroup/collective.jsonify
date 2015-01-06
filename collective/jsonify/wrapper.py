@@ -4,7 +4,10 @@ from zope.component import getUtilitiesFor, queryMultiAdapter, getUtility, \
     getMultiAdapter, adapts
 from zope.schema.interfaces import IField
 from zope.interface import providedBy
-from collective.panels.traversal import PanelManager
+try:
+    from collective.panels.traversal import PanelManager
+except:
+    PanelManager = None
 from plone.app.portlets.interfaces import IPortletTypeInterface
 from plone.portlets.interfaces import IPortletRenderer
 from plone.portlets.interfaces import ILocalPortletAssignable, IPortletManager,\
@@ -18,7 +21,10 @@ from plone.app.portlets.exportimport.portlets import PropertyPortletAssignmentEx
 try:
     from plone.multilingual.interfaces import ITranslationManager
 except:
-    from plone.app.multilingual.interfaces import ITranslationManager    
+    try:
+        from plone.app.multilingual.interfaces import ITranslationManager
+    except:
+        ITranslationManager = None
 
 
 
@@ -569,41 +575,42 @@ class Wrapper(dict):
                         export_fields(portlet_interface, assignment, child['properties'])
                         self['portlets']['assignments'].append(child)
             names = ['plone.belowcontentbody','plone.abovecontentbody', 'plone.portalfooter','plone.portaltop']
-            for manager_name in names:
-                panels = PanelManager(obj, obj.REQUEST, obj, manager_name)
-                #import pdb; pdb.set_trace()
-                for panel in panels._mapping.items():
-                    for name in panel[1].keys():
-                        for schema in providedBy(panel[1][name]).flattened():
-                            type_ = self.portlet_schemata.get(schema, None)
+            if PanelManager:
+                for manager_name in names:
+                    panels = PanelManager(obj, obj.REQUEST, obj, manager_name)
+                    #import pdb; pdb.set_trace()
+                    for panel in panels._mapping.items():
+                        for name in panel[1].keys():
+                            for schema in providedBy(panel[1][name]).flattened():
+                                type_ = self.portlet_schemata.get(schema, None)
+                                if type_ is not None:
+                                    break
+                            if not 'assignments' in self['portlets'].keys():
+                                self['portlets']['assignments'] = []
                             if type_ is not None:
-                                break
-                        if not 'assignments' in self['portlets'].keys():
-                            self['portlets']['assignments'] = []
-                        if type_ is not None:
-                            child = {}
-                            child['manager'] = manager_name
-                            child['panel'] = panel[0]
-                            child['layout'] = panel[1].layout
-                            child['category'] = CONTEXT_CATEGORY
-                            child['key'] = '/'.join(obj.getPhysicalPath())
-                            child['type'] = type_
-                            child['name'] = name
-                            child['properties'] = {}
-                            assignment = panel[1][name].__of__(obj)
-                            portlet_interface = getUtility(IPortletTypeInterface, name=type_)
-                            export_fields(portlet_interface, panel[1][name], child['properties'])
-                            self['portlets']['assignments'].append(child)
+                                child = {}
+                                child['manager'] = manager_name
+                                child['panel'] = panel[0]
+                                child['layout'] = panel[1].layout
+                                child['category'] = CONTEXT_CATEGORY
+                                child['key'] = '/'.join(obj.getPhysicalPath())
+                                child['type'] = type_
+                                child['name'] = name
+                                child['properties'] = {}
+                                assignment = panel[1][name].__of__(obj)
+                                portlet_interface = getUtility(IPortletTypeInterface, name=type_)
+                                export_fields(portlet_interface, panel[1][name], child['properties'])
+                                self['portlets']['assignments'].append(child)
 
 
     def get_translations(self):
         """ List translations information
         """
-        #import pdb;pdb.set_trace()
-        tm = ITranslationManager(self.context)
-        self['translation_group'] = tm.get_tg(self.context)
-        self['translations'] = {}
-        translations = tm.get_translations()
-        for key in translations:
-            b = translations[key]
-            self['translations'][key] = ['/'.join(b.getPhysicalPath()), b.UID()] 
+        if ITranslationManager:
+            tm = ITranslationManager(self.context)
+            self['translation_group'] = tm.get_tg(self.context)
+            self['translations'] = {}
+            translations = tm.get_translations()
+            for key in translations:
+                b = translations[key]
+                self['translations'][key] = ['/'.join(b.getPhysicalPath()), b.UID()] 
