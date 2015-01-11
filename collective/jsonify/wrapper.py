@@ -26,6 +26,10 @@ except:
     except:
         ITranslationManager = None
 
+try:
+    from ecreall.trashcan.interfaces import ITrashed
+except:
+    ITrashed = None
 
 
 class Wrapper(dict):
@@ -47,8 +51,11 @@ class Wrapper(dict):
         if not self.charset: # newer seen it missing ... but users can change it
             self.charset = 'utf-8'
 
+        #call the needed get_ methods by name
         for method in dir(self):
-            if method.startswith('get_'):
+            if method in ['get_path','get_trashed', 'get_type',
+            'get_classname','get_uid','get_format','get_workflowhistory','get_id',
+            'get_position_in_parent','get_zopeobject_document_src','get_archetypes_fields']:
                 getattr(self, method)()
 
     def decode(self, s, encodings=('utf8', 'latin1', 'ascii')):
@@ -75,6 +82,13 @@ class Wrapper(dict):
 
         """
         self['_path'] = '/'.join(self.context.getPhysicalPath())
+
+    def get_trashed(self):
+        """
+        """
+        if ITrashed:
+            self['trashed'] = ITrashed.providedBy(self.context)
+
 
     def get_type(self):
         """ Portal type of object
@@ -123,6 +137,7 @@ class Wrapper(dict):
                     val = self.decode(val)
                 self['_properties'].append(
                         (pid, val, self.context.getPropertyType(pid)))
+
 
     def get_defaultview(self):
         """ Default view of object
@@ -518,6 +533,7 @@ class Wrapper(dict):
             for bref in brefs:
                 if bref is not None:
                     self['_atbrefs'][brel].append('/'.join(bref.getPhysicalPath()))
+	
 
     def get_translation(self):
         """ Get LinguaPlone translation linking information.
