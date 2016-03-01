@@ -1,6 +1,6 @@
-# See http://peak.telecommunity.com/DevCenter/setuptools#namespace-packages
-try:
-    __import__('pkg_resources').declare_namespace(__name__)
-except ImportError:
-    from pkgutil import extend_path
-    __path__ = extend_path(__path__, __name__)
+from Products.PythonScripts.Utility import allow_module
+allow_module('collective.jsonify')
+
+from collective.jsonify.methods import get_item  # noqa
+from collective.jsonify.methods import get_children  # noqa
+from collective.jsonify.methods import get_catalog_results  # noqa
