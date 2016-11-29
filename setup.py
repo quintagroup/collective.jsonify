@@ -8,7 +8,17 @@ if sys.version_info < (2, 3):
 else:
     from setuptools import setup, find_packages
 
-version = '1.2.dev0'
+version = '1.3.dev0'
+
+requirements = [
+    'setuptools',
+]
+
+# since Python 2.6 simplejson is not needed anymore
+try:
+    import json
+except ImportError:
+    requirements.append('simplejson')
 
 setup(
     name='collective.jsonify',
@@ -36,8 +46,5 @@ setup(
     namespace_packages=['collective'],
     include_package_data=True,
     zip_safe=False,
-    install_requires=[
-        'setuptools',
-        'simplejson',
-    ],
+    install_requires=requirements,
 )
