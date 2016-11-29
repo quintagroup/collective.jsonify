@@ -3,6 +3,7 @@ import base64
 import pprint
 import sys
 import traceback
+from Products.Five.browser import BrowserView
 
 try:
     import simplejson as json
@@ -86,3 +87,29 @@ def get_catalog_results(self):
                   in self.unrestrictedSearchResults(**query)]
     self.REQUEST.response.setHeader("Content-type", "application/json")
     return json.dumps(item_paths)
+
+class Jsonify(BrowserView):
+
+
+    def get_item(self):
+        """
+        """      
+        return get_item(self.context)
+
+
+    def get_children(self):
+        """
+        """
+        return get_children(self.context)
+
+
+    def get_catalog_results(self):
+        """
+        """
+        return get_catalog_results(self.context)
+
+    def get_redirects(self):
+        """
+        """
+        return get_redirects(self.context)
+
