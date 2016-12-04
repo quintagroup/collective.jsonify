@@ -3,6 +3,11 @@ from DateTime import DateTime
 from Products.CMFCore.utils import getToolByName
 import datetime
 import os
+try:
+    from plone.app.multilingual.interfaces import ITranslationManager
+    HAS_MULTILINGUAL = True
+except ImportError:
+    HAS_MULTILINGUAL = False
 
 
 class Wrapper(dict):
@@ -126,7 +131,8 @@ class Wrapper(dict):
                         'encoding': 'base64'
                     }
                     value = dvalue
-
+                elif field_type == 'RelationList':
+                    value = [item.to_object.UID() for item in value]
                 elif field_type == 'GeolocationField':
                     # super special plone.formwidget.geolocation case
                     self['latitude'] = getattr(value, 'latitude', 0)
@@ -604,11 +610,15 @@ class Wrapper(dict):
     def get_translation(self):
         """Get LinguaPlone translation linking information.
         """
+        if HAS_MULTILINGUAL:
+            self['_lang'] = self.context.language
+            self['_tg'] = ITranslationManager(self.context).get_tg(self.context)
+
         if not hasattr(self._context, 'getCanonical'):
             return
         self['_translationOf'] = '/'.join(
             self.context.getCanonical().getPhysicalPath()
-        )[len(self.portal_path):]
+            )[len(self.portal_path):]
         self['_canonicalTranslation'] = self.context.isCanonical()
 
     def _is_cmf_only_obj(self):
