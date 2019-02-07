@@ -1,8 +1,43 @@
 Changelog
 =========
 
-1.3 (unreleased)
+1.5 (unreleased)
 ----------------
+
+- Nothing changed yet.
+
+
+1.4 (2018-09-20)
+----------------
+
+- Try Subject and Contributors when subject and contributors give nothing.
+  [maurits]
+
+- Check if value exists on file like fields
+  [agitator]
+
+- Export creation_date and modification_date for all objects, not only _is_cmf_only_obj.
+  For dexterity these values are not present in a schemata, so they are not included as part
+  of the normal schemata based dexterity export.
+  [sunew]
+
+- Use self.decode method to get stringified field value when wrapping content
+  for export.
+  [instification]
+
+
+1.3 (2017-12-21)
+----------------
+
+- Export plone.app.redirector redirects, if available.
+  Comply with default expectations of redirector section in plone.app.transmogrifier.
+  [hvelarde]
+
+- Do not export FormGen and Redirection tools.
+  [hvelarde]
+
+- Show translations from LinguaPlone if canonical is available.
+  [agitator]
 
 - Fixed value for unknown fields.  The value was never calculated
   fresh for these fields, so you got the value of the previous field.
@@ -13,9 +48,9 @@ Changelog
 - Added `CHANGES.rst merge=union` to `.gitattributes`
   [ale-rt]
 
-
 - Added the history to JSON export.
   [rristow]
+
 
 1.2 (2016-05-24)
 ----------------

@@ -58,6 +58,7 @@ CLASSNAME_TO_SKIP = [
     'DiscussionTool',
     'FactoryTool',
     'FormController',
+    'FormGenTool',
     'FormTool',
     'GroupDataTool',
     'GroupUserFolder',
@@ -77,6 +78,7 @@ CLASSNAME_TO_SKIP = [
     'PropertiesTool',
     'QuickInstallerTool',
     'RAMCacheManager',
+    'RedirectionTool',
     'ReferenceCatalog',
     'RegistrationTool',
     'SinTool',
@@ -298,7 +300,7 @@ def walk(folder, skip_callback=lambda item: False):
         yield_item = True
         path = '/'.join(item.getPhysicalPath())
         if filter(lambda x: x in path, PATHS_TO_SKIP):
-            # Skip the whole path, including subdirectories 
+            # Skip the whole path, including subdirectories
             continue
         if item.__class__.__name__ in CLASSNAME_TO_SKIP\
                 or item.getId() in ID_TO_SKIP:
@@ -372,6 +374,8 @@ def write(items):
                 passed = True
             except Exception, error:
                 if "serializable" in str(error):
+                    # Good place to inspect errors:
+                    ## from ipdb import set_trace; set_trace()
                     key, context_dict = _clean_dict(context_dict, error)
                     logger.warn(
                         'Not serializable member %s of %s ignored. (%s)' % (
