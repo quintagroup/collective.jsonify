@@ -4,10 +4,10 @@ from Products.CMFCore.utils import getToolByName
 import datetime
 import os
 try:
-    from plone.app.multilingual.interfaces import ITranslationManager
-    HAS_MULTILINGUAL = True
+    from plone.uuid.interfaces import IUUID
+    HASPLONEUUID = True
 except ImportError:
-    HAS_MULTILINGUAL = False
+    HASPLONEUUID = False
 
 
 class Wrapper(dict):
@@ -66,6 +66,33 @@ class Wrapper(dict):
                 pass
         return s.decode(test_encodings[0], 'ignore')
 
+    def _serialize_file(self, value):
+        if hasattr(value, 'open'):
+            data = value.open().read()
+        else:
+            data = value.data
+
+        try:
+            max_filesize = int(
+                os.environ.get('JSONIFY_MAX_FILESIZE', 20000000))
+        except ValueError:
+            max_filesize = 20000000
+
+        if data and len(data) > max_filesize:
+            raise ValueError
+
+        import base64
+        ctype = value.contentType
+        size = value.getSize()
+        dvalue = {
+            'data': base64.b64encode(data),
+            'size': size,
+            'filename': value.filename or '',
+            'content_type': ctype,
+            'encoding': 'base64'
+        }
+        return dvalue
+
     def get_dexterity_fields(self):
         """If dexterity is used then extract fields.
         """
@@ -92,10 +119,32 @@ class Wrapper(dict):
                     continue
 
                 field_type = field.__class__.__name__
+                try:
+                    field_value_type = field.value_type.__class__.__name__
+                except AttributeError:
+                    field_value_type = None
 
                 if field_type in ('RichText',):
                     # TODO: content_type missing
                     value = unicode(value.raw)
+
+                elif field_type in (
+                    'List',
+                    'Tuple',
+                ) and field_value_type in (
+                    'NamedImage',
+                    'NamedBlobImage',
+                    'NamedFile',
+                    'NamedBlobFile'
+                ):
+                    fieldname = unicode('_datafield_' + fieldname)
+                    _value = []
+                    for item in value:
+                        try:
+                            _value.append(self._serialize_file(item))
+                        except ValueError:
+                            continue
+                    value = _value
 
                 elif field_type in (
                     'NamedImage',
@@ -105,34 +154,25 @@ class Wrapper(dict):
                 ):
                     # still to test above with NamedFile & NamedBlobFile
                     fieldname = unicode('_datafield_' + fieldname)
-
-                    if hasattr(value, 'open'):
-                        data = value.open().read()
-                    else:
-                        data = value.data
-
                     try:
-                        max_filesize = int(
-                            os.environ.get('JSONIFY_MAX_FILESIZE', 20000000))
+                        value = self._serialize_file(value)
                     except ValueError:
-                        max_filesize = 20000000
-
-                    if data and len(data) > max_filesize:
                         continue
 
-                    import base64
-                    ctype = value.contentType
-                    size = value.getSize()
-                    dvalue = {
-                        'data': base64.b64encode(data),
-                        'size': size,
-                        'filename': value.filename or '',
-                        'content_type': ctype,
-                        'encoding': 'base64'
-                    }
-                    value = dvalue
-                elif field_type == 'RelationList':
-                    value = [item.to_object.UID() for item in value]
+                elif field_type in (
+                    'RelationList',
+                ) and field_value_type in (
+                    'RelationChoice',
+                ):
+                    _value = []
+                    for item in value:
+                        try:
+                            # Simply export the path to the relation. Postprocessing when importing is needed.
+                            _value.append(item.to_path)
+                        except ValueError:
+                            continue
+                    value = _value
+
                 elif field_type == 'GeolocationField':
                     # super special plone.formwidget.geolocation case
                     self['latitude'] = getattr(value, 'latitude', 0)
@@ -270,8 +310,8 @@ class Wrapper(dict):
                 value = self._get_at_field_value(field)
                 value2 = value
 
-                if not isinstance(value, str):
-                    if isinstance(value.data, str):
+                if value and not isinstance(value, str):
+                    if isinstance(getattr(value, 'data', None), str):
                         value = base64.b64encode(value.data)
                     else:
                         data = value.data
@@ -364,7 +404,7 @@ class Wrapper(dict):
                     value = field.getRaw(self.context)
                 except AttributeError:
                     value = self._get_at_field_value(field)
-                self[unicode(fieldname)] = unicode(value)
+                self[unicode(fieldname)] = self.decode(str(value))
 
     def get_references(self):
         """AT references.
@@ -402,6 +442,8 @@ class Wrapper(dict):
         """
         if hasattr(self._context, 'UID'):
             self['_uid'] = self.context.UID()
+        elif HASPLONEUUID:
+            self['_uid'] = IUUID(self.context.aq_base, None)
 
     def get_id(self):
         """Object id
@@ -608,17 +650,20 @@ class Wrapper(dict):
         self['_gopip'] = pos
 
     def get_translation(self):
-        """Get LinguaPlone translation linking information.
+        """ Get LinguaPlone translation linking information.
         """
-        if HAS_MULTILINGUAL:
-            self['_lang'] = self.context.language
-            self['_tg'] = ITranslationManager(self.context).get_tg(self.context)
-
         if not hasattr(self._context, 'getCanonical'):
             return
-        self['_translationOf'] = '/'.join(
-            self.context.getCanonical().getPhysicalPath()
-            )[len(self.portal_path):]
+
+        translations = self.context.getTranslations()
+        self['_translations'] = {}
+
+        for lang in translations:
+            trans_obj = '/'.join(translations[lang][0].getPhysicalPath())[len(self.portal_path):]
+            self['_translations'][lang] = trans_obj
+
+        self['_translationOf'] = '/'.join(self.context.getCanonical(
+                                 ).getPhysicalPath())[len(self.portal_path):]
         self['_canonicalTranslation'] = self.context.isCanonical()
 
     def _is_cmf_only_obj(self):
@@ -670,6 +715,12 @@ class Wrapper(dict):
         for field in ('subject', 'contributors'):
             self[field] = []
             val_tuple = getattr(self.context, field, False)
+            if not val_tuple:
+                # At least on Plone 2.5 we need Subject and Contributors
+                # with a first capital letter.
+                val_tuple = getattr(self.context, field.title(), False)
+                if callable(val_tuple):
+                    val_tuple = val_tuple()
             if val_tuple:
                 for val in val_tuple:
                     self[field].append(self.decode(val))
@@ -692,6 +743,24 @@ class Wrapper(dict):
             self['modification_date'] = str(val)
         else:
             self['modification_date'] = ''
+
+    def get_basic_dates(self):
+        """ Dump creation and modification dates for items
+        that are not "cmf-only". For dexterity for instance, these
+        are not included in behaviors and so are not included in the
+        iteration over schematas and fields in get_dexterity_fields().
+        """
+        if self._is_cmf_only_obj():
+            # then the dates are handled by get_zope_dublin_core,
+            # so we do nothing.
+            return
+        # datetime fields
+        for field in ['creation_date', 'modification_date']:
+            val = getattr(self.context.aq_base, field, False)
+            if val:
+                self[field] = str(val)
+            else:
+                self[field] = ''
 
     def get_zope_cmfcore_fields(self):
         """If CMFCore is used in an old Zope site, then dump the fields we know
@@ -820,4 +889,21 @@ class Wrapper(dict):
             self['_history'] = history_list
 
         except:
+            pass
+
+    def get_redirects(self):
+        """Export plone.app.redirector redirects, if available.
+        Comply with default expectations of redirector section in
+        plone.app.transmogrifier: use the same key name "_old_paths"
+        and don't include the site name on the path.
+        """
+        try:
+            from zope.component import getUtility
+            from plone.app.redirector.interfaces import IRedirectionStorage
+            storage = getUtility(IRedirectionStorage)
+            redirects = storage.redirects('/'.join(self.context.getPhysicalPath()))
+            if redirects:
+                # remove site name (e.g. "/Plone") from redirect paths
+                self['_old_paths'] = [r[len(self.portal_path):] for r in redirects]
+        except:  # noqa: E722
             pass
